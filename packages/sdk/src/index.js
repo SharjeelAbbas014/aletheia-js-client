@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 const ENGINE_BINARY_NAME = osPlatform() === "win32" ? "temporal_memory.exe" : "temporal_memory";
 const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_STARTUP_TIMEOUT_MS = 60_000;
+const DEFAULT_TEST_API_KEY = "XXX1111AAA";
 
 export class AletheiaError extends Error {}
 
@@ -37,6 +38,10 @@ function defaultCacheDir() {
     return join(process.env.LOCALAPPDATA || join(homedir(), "AppData", "Local"), "aletheia");
   }
   return join(process.env.XDG_CACHE_HOME || join(homedir(), ".cache"), "aletheia");
+}
+
+function defaultApiKey() {
+  return envFirst("ALETHEIA_API_KEY", "TEMPORAL_MEMORY_API_KEY") || DEFAULT_TEST_API_KEY;
 }
 
 function platformTag() {
@@ -154,7 +159,7 @@ export class LocalEngineManager {
   } = {}) {
     this.host = host;
     this.port = port;
-    this.apiKey = apiKey;
+    this.apiKey = apiKey || defaultApiKey();
     this.binaryPath = binaryPath;
     this.cacheDir = resolve(cacheDir || envFirst("ALETHEIA_ENGINE_CACHE_DIR", "TEMPORAL_MEMORY_ENGINE_CACHE_DIR") || defaultCacheDir());
     this.dataDir = resolve(dataDir || join(this.cacheDir, "data", `${host}-${port}`));
@@ -350,7 +355,12 @@ export class LocalEngineManager {
   }
 
   async fetchJson(path) {
-    const response = await fetch(new URL(path, `${this.baseUrl}/`));
+    const headers = {};
+    if (this.apiKey) {
+      headers["x-api-key"] = this.apiKey;
+      headers.authorization = `Bearer ${this.apiKey}`;
+    }
+    const response = await fetch(new URL(path, `${this.baseUrl}/`), { headers });
     if (!response.ok) {
       throw new AletheiaHTTPError(response.status, await response.text(), response.url);
     }
@@ -361,7 +371,7 @@ export class LocalEngineManager {
 export class AletheiaClient {
   constructor(baseUrl, { apiKey = null, timeoutMs = DEFAULT_TIMEOUT_MS, engineManager = null } = {}) {
     this.baseUrl = baseUrl.replace(/\/+$/, "");
-    this.apiKey = apiKey;
+    this.apiKey = apiKey || defaultApiKey();
     this.timeoutMs = timeoutMs;
     this.engineManager = engineManager;
   }
@@ -479,6 +489,7 @@ export class AletheiaClient {
     }
     if (this.apiKey) {
       headers["x-api-key"] = this.apiKey;
+      headers.authorization = `Bearer ${this.apiKey}`;
     }
 
     const response = await fetch(url, {

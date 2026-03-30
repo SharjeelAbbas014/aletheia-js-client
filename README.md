@@ -23,8 +23,8 @@ const hits = await client.query("What coffee do I prefer?", {
 import { AletheiaClient } from "@aletheia/sdk";
 
 const client = AletheiaClient.fromCloud(
-  "https://memory.example.com",
-  "tm_live_xxx"
+  "http://143.110.246.15:3000",
+  "XXX1111AAA"
 );
 ```
 
